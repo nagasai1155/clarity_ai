@@ -1,0 +1,94 @@
+# Build Prompt: AI Chat Application (Gemini-powered)
+
+Paste this into your AI IDE (Cursor / Windsurf / Claude Code / etc.)
+
+---
+
+## Project Overview
+
+Build a full-stack AI chat web application similar in spirit to ChatGPT / Claude / Gemini's web UI (not a copy — original clean design, same interaction patterns). Users sign in with Google, chat with a Google Gemini model, and their conversations persist in a MySQL database.
+
+## Tech Stack
+
+- **Framework:** Next.js 15 (App Router), TypeScript
+- **Styling:** Tailwind CSS
+- **Auth:** NextAuth.js (Auth.js v5) with Google OAuth provider
+- **Database:** MySQL, accessed via Prisma ORM
+- **AI Provider:** Google Gemini API via `@google/genai` SDK (or Vercel AI SDK's `google` provider — prefer Vercel AI SDK for built-in streaming support)
+- **Model:** `gemini-3.5-flash-lite` (high RPM, low latency, good for a chat app with many concurrent requests). Make the model name an environment variable (`GEMINI_MODEL`) so it's easy to swap if Google renames/deprecates it later — do NOT hardcode it.
+- **Streaming:** Token-by-token streaming responses (Server-Sent Events / ReadableStream), not a single blocking response
+
+## Environment Variables Needed
+
+```
+DATABASE_URL=              # MySQL connection string
+GOOGLE_CLIENT_ID=          # Google OAuth
+GOOGLE_CLIENT_SECRET=
+NEXTAUTH_SECRET=
+NEXTAUTH_URL=
+GEMINI_API_KEY=            # Google AI Studio key
+GEMINI_MODEL=gemini-3.5-flash-lite
+```
+
+## Database Schema (Prisma)
+
+Design models for:
+- `User` (id, name, email, image, createdAt — populated via Google OAuth)
+- `Conversation` (id, userId, title, createdAt, updatedAt) — title auto-generated from the first user message
+- `Message` (id, conversationId, role [user/assistant], content, createdAt)
+
+Use cascading deletes so removing a conversation removes its messages.
+
+## Core Features
+
+1. **Google OAuth sign-in** — landing/login page with a "Continue with Google" button. Unauthenticated users can't access the chat.
+2. **Sidebar** — list of the signed-in user's past conversations (most recent first), a "New chat" button, ability to rename and delete a conversation, and the signed-in user's avatar/name with a sign-out option at the bottom.
+3. **Main chat window:**
+   - Empty state with a friendly prompt/greeting when starting a new chat
+   - Message bubbles clearly distinguishing user vs. assistant, left/right or styled distinctly
+   - Markdown rendering for assistant responses (headings, lists, bold/italic, tables, blockquotes)
+   - Syntax-highlighted code blocks with a "Copy code" button
+   - Streaming text that appears progressively as the model generates it (typing effect, not a spinner-then-dump)
+   - A "Stop generating" button while a response is streaming
+   - "Copy message" and "Regenerate response" actions on assistant messages
+   - Auto-scroll to the latest message, but don't yank the user's scroll position if they've scrolled up to read history
+4. **Input area** — auto-resizing textarea, Enter to send / Shift+Enter for newline, disabled while a response is streaming, character/token guardrails if you want to cap message length.
+5. **Persistence** — every message (user + assistant) is saved to the database tied to the conversation and user, so refreshing or returning later restores full history.
+6. **Theme** — light/dark mode toggle, defaulting to system preference, persisted in localStorage.
+7. **Responsive design** — sidebar collapses to a drawer/hamburger menu on mobile; chat remains fully usable on small screens.
+
+## Design Direction
+
+- Clean, minimal, generous whitespace — inspired by the *feel* of ChatGPT/Claude (calm neutral palette, rounded corners, subtle shadows, clear typographic hierarchy) but with its own distinct color accent and identity, not a visual copy.
+- Smooth, understated transitions (message entry, sidebar open/close, streaming cursor) — nothing gaudy.
+- Prioritize legibility: comfortable line-height and max-width on message text so long responses don't stretch edge-to-edge on wide screens.
+
+## API Route Structure
+
+- `POST /api/chat` — accepts conversation ID + new user message, streams back the Gemini response, saves both messages to the DB once complete
+- `GET /api/conversations` — list current user's conversations
+- `POST /api/conversations` — create a new conversation
+- `PATCH /api/conversations/[id]` — rename
+- `DELETE /api/conversations/[id]` — delete
+- NextAuth route handlers for Google OAuth
+
+## Build Order
+
+1. Scaffold Next.js + TypeScript + Tailwind project
+2. Set up Prisma + MySQL schema and run initial migration
+3. Wire up NextAuth with Google provider, protect routes with middleware
+4. Build sidebar + conversation CRUD (UI can use mock data first)
+5. Build chat UI (message list, input, markdown/code rendering) with mock streaming
+6. Integrate real Gemini streaming via `/api/chat`, wire to DB persistence
+7. Polish: dark mode, mobile responsiveness, loading/error states, empty states
+
+## Non-goals (skip unless asked)
+
+- Multi-provider model switching (Gemini only for now)
+- File/image uploads
+- Team/workspace multi-tenancy
+- Payment/billing
+
+---
+
+**Instruction to the AI IDE:** Implement this incrementally, starting with project scaffolding and auth, then database, then the chat UI, then live Gemini integration. Ask me before making irreversible schema decisions, and keep components modular (separate the sidebar, message list, message bubble, input bar, and streaming logic into their own files).
