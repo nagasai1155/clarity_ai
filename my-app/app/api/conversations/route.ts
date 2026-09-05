@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma, withDbTimeout, getOrCreateUser } from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+
 // In-memory fallback store for when database is not connected yet
 const inMemoryConversations: Record<string, Array<{ id: string; title: string; createdAt: Date; updatedAt: Date; userId: string }>> = {};
 

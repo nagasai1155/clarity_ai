@@ -5,6 +5,7 @@ import { streamText } from "ai";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 
 export const maxDuration = 30;
+export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   try {

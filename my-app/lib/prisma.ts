@@ -4,11 +4,27 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
+function createPrismaClient(): PrismaClient {
+  try {
+    return new PrismaClient({
+      log: process.env.NODE_ENV === "development" ? ["warn", "error"] : ["error"],
+    });
+  } catch (error) {
+    console.warn("PrismaClient initialization deferred or failed:", error);
+    const dummyProxy: any = new Proxy(() => {}, {
+      get: (_target, prop) => {
+        if (prop === "then") return undefined;
+        return dummyProxy;
+      },
+      apply: () => Promise.reject(new Error("Database not connected")),
+    });
+    return dummyProxy;
+  }
+}
+
 export const prisma =
   globalForPrisma.prisma ??
-  new PrismaClient({
-    log: process.env.NODE_ENV === "development" ? ["warn", "error"] : ["error"],
-  });
+  (globalForPrisma.prisma = createPrismaClient());
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
 
