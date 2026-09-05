@@ -3,7 +3,11 @@ import Google from "next-auth/providers/google";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 
-const hasGoogleAuth = !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+const clean = (val?: string) => val?.replace(/["']/g, "").trim();
+
+const googleClientId = clean(process.env.GOOGLE_CLIENT_ID || process.env.AUTH_GOOGLE_ID);
+const googleClientSecret = clean(process.env.GOOGLE_CLIENT_SECRET || process.env.AUTH_GOOGLE_SECRET);
+const hasGoogleAuth = !!(googleClientId && googleClientSecret);
 const hasDatabase = !!process.env.DATABASE_URL;
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -13,8 +17,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     ...(hasGoogleAuth
       ? [
           Google({
-            clientId: process.env.GOOGLE_CLIENT_ID,
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+            clientId: googleClientId,
+            clientSecret: googleClientSecret,
             allowDangerousEmailAccountLinking: true,
           }),
         ]
@@ -37,5 +41,5 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   pages: {
     signIn: "/",
   },
-  secret: process.env.NEXTAUTH_SECRET || "default_local_clarity_ai_secret_at_least_32_chars",
+  secret: clean(process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET) || "default_local_clarity_ai_secret_at_least_32_chars",
 });
