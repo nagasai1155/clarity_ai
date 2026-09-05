@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { prisma, withDbTimeout } from "@/lib/prisma";
+import { prisma, withDbTimeout, getOrCreateUser } from "@/lib/prisma";
 import { streamText } from "ai";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 
@@ -9,7 +9,7 @@ export const maxDuration = 30;
 export async function POST(req: Request) {
   try {
     const session = await auth();
-    const userId = session?.user?.id || "demo-user-1";
+    const dbUserId = await getOrCreateUser(session?.user);
     const body = await req.json();
     const { conversationId, message, messages = [] } = body;
 
@@ -26,11 +26,11 @@ export async function POST(req: Request) {
         const newConv = await withDbTimeout<{ id: string }>(
           prisma.conversation.create({
             data: {
-              userId,
+              userId: dbUserId,
               title: currentMessage ? currentMessage.slice(0, 36) : "New Chat",
             },
           }),
-          1200
+          1500
         );
         convId = newConv.id;
       }
